@@ -1,0 +1,124 @@
+services:
+  api:
+    build:
+      context: ./be
+    command: uvicorn src.app:app --host 0.0.0.0 --port 8000
+    env_file:
+      - path: ./be/.env
+        required: false
+      - path: ./.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+psycopg://digigo:digigo@postgres:5432/digigo
+      KEYDB_HOST: keydb
+      KEYDB_PORT: 6379
+      KEYDB_QUEUE_DB: 1
+      WEAVIATE_HOSTNAME: weaviate
+      WEAVIATE_PORT: 8080
+      WEAVIATE_GRPC_PORT: 50051
+      WEAVIATE_USE_HTTPS: "false"
+      STORAGE_ROOT: /app/data/runtime
+      TASKS_EAGER: "false"
+      JWT_SECRET: dev-secret
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      JINA_API_KEY: ${JINA_API_KEY:-}
+      DSGO_CLIENT_ID: ${DSGO_CLIENT_ID:-did:ishare:EU.NL.NTRNL-98499327}
+      DSGO_PRIVATE_KEY_PATH: /app/credentials/private.key
+      DSGO_CERTIFICATE_PATH: /app/credentials/vondr B.V..pem
+      DSGO_REGISTRY_URL: ${DSGO_REGISTRY_URL:-https://api.acceptance.digigo.nu}
+      DSGO_REGISTRY_PARTY_ID: ${DSGO_REGISTRY_PARTY_ID:-did:ishare:EU.NL.NTRNL-63202158}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./be/data:/app/data
+      - ./data:/workspace-data:ro
+      - ./be/credentials:/app/credentials:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keydb:
+        condition: service_started
+      weaviate:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./be
+    command: arq src.worker.tasks.WorkerSettings
+    env_file:
+      - path: ./be/.env
+        required: false
+      - path: ./.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+psycopg://digigo:digigo@postgres:5432/digigo
+      KEYDB_HOST: keydb
+      KEYDB_PORT: 6379
+      KEYDB_QUEUE_DB: 1
+      WEAVIATE_HOSTNAME: weaviate
+      WEAVIATE_PORT: 8080
+      WEAVIATE_GRPC_PORT: 50051
+      WEAVIATE_USE_HTTPS: "false"
+      STORAGE_ROOT: /app/data/runtime
+      TASKS_EAGER: "false"
+      JWT_SECRET: dev-secret
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      JINA_API_KEY: ${JINA_API_KEY:-}
+    volumes:
+      - ./be/data:/app/data
+      - ./data:/workspace-data:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keydb:
+        condition: service_started
+      weaviate:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: digigo
+      POSTGRES_USER: digigo
+      POSTGRES_PASSWORD: digigo
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U digigo -d digigo"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  keydb:
+    image: eqalpha/keydb:latest
+    ports:
+      - "6379:6379"
+
+  weaviate:
+    image: semitechnologies/weaviate:1.31.1
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    environment:
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      DEFAULT_VECTORIZER_MODULE: none
+      ENABLE_MODULES: ""
+      CLUSTER_HOSTNAME: node1
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  postgres_data:
+  weaviate_data:

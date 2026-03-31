@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.venv
+
+# Credentials - NEVER commit
+credentials/
+*.key
+*.pem
+
+# Environment
+.env
+
+# OS
+.DS_Store
+
+# Large files (GitHub 100MB limit)
+*.mp4
+*.zip
+assets/inbox/Kick off DSGO Hackathon 2026.mp4
+
+# Data directory (7.7GB, local only)
+data/
+
+# Demo project data stays local (too large for git)
+demo-projecten/**/*.pdf
+demo-projecten/**/*.xlsx
+demo-projecten/**/*.xls
+demo-projecten/**/*.docx
+demo-projecten/**/*.zip
+demo-projecten/**/*.zsx
+demo-projecten/**/*.PDF
